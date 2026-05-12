@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORGE — Session Pressure Curve</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink:       #0f0f0d;
+  --ink-2:     #3a3a36;
+  --ink-3:     #7a7a74;
+  --ink-4:     #aeaea6;
+  --paper:     #f0ede6;
+  --panel:     #faf9f6;
+  --panel-2:   #f0ede6;
+  --rule:      rgba(15,15,13,0.09);
+  --rule-med:  rgba(15,15,13,0.16);
+  --accent:    #bf4528;
+  --accent-2:  #d4522f;
+  --blue:      #1a5fa8;
+  --orange:    #c85a20;
+  --mono:      'DM Mono', monospace;
+  --sans:      'DM Sans', sans-serif;
+}
+
+html, body {
+  min-height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Top bar ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  height: 48px;
+  background: var(--ink);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+.topbar-brand .name {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--accent-2);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.topbar-brand .sep {
+  color: rgba(255,255,255,0.2);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.topbar-brand .sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: rgba(255,255,255,0.38);
+  letter-spacing: 0.04em;
+}
+.topbar-meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 0.04em;
+}
+
+/* ── Main layout ── */
+.main {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 4rem;
+}
+
+/* ── Header block ── */
+.header-block {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule-med);
+}
+.header-text {}
+.header-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+.header-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+  margin-bottom: 0.6rem;
+}
+.header-desc {
+  font-size: 13px;
+  color: var(--ink-3);
+  max-width: 560px;
+  line-height: 1.6;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+.btn-resim {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.btn-resim:hover { background: var(--accent-2); }
+.btn-resim:active { transform: scale(0.97); }
+.btn-resim svg { flex-shrink: 0; }
+.spin-count-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+.spin-count-label select {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--rule-med);
+  border-radius: 2px;
+  padding: 0.2rem 0.4rem;
+  cursor: pointer;
+}
+
+/* ── Legend ── */
+.legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  letter-spacing: 0.03em;
+}
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.legend-line {
+  width: 18px;
+  height: 2px;
+  flex-shrink: 0;
+  border-radius: 1px;
+}
+.legend-band {
+  width: 14px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 1px;
+  opacity: 0.35;
+}
+
+/* ── Chart panel ── */
+.chart-panel {
+  background: var(--ink);
+  border-radius: 4px;
+  padding: 1.5rem 1.5rem 1rem;
+  margin-bottom: 1.25rem;
+  position: relative;
+}
+.chart-wrap {
+  position: relative;
+  height: 320px;
+}
+
+/* ── Stats row ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.9rem 1rem;
+}
+.stat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  margin-bottom: 0.35rem;
+}
+.stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1;
+  margin-bottom: 0.2rem;
+}
+.stat-value.above { color: #2e7d32; }
+.stat-value.below { color: var(--accent); }
+.stat-note {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-4);
+}
+
+/* ── Session summary bar ── */
+.session-summary {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  line-height: 1.7;
+  padding: 0.9rem 1rem;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  margin-bottom: 2rem;
+}
+.session-summary span {
+  color: var(--ink-2);
+}
+
+/* ── Reading guide ── */
+.reading-guide {
+  border-top: 1px solid var(--rule);
+  padding-top: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+.guide-item {}
+.guide-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.35rem;
+}
+.guide-text {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .header-block { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .reading-guide { grid-template-columns: 1fr; }
+  .header-actions { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <span class="name">FORGE</span>
+    <span class="sep">/</span>
+    <span class="sub">Math-to-Emotion Visualization</span>
+  </div>
+  <div class="topbar-meta">AGS Game Innovation Fellow — CJ Joyner</div>
+</div>
+
+<div class="main">
+
+  <div class="header-block">
+    <div class="header-text">
+      <div class="header-eyebrow">Section 4 — Deliverable</div>
+      <div class="header-title">Session Pressure Curve</div>
+      <div class="header-desc">
+        Bankroll over time across a simulated session, annotated with win events by layer.
+        Each run is a unique session drawn from the FORGE math model. The dry spells are the design.
+      </div>
+    </div>
+    <div class="header-actions">
+      <label class="spin-count-label">
+        Spins:&nbsp;
+        <select id="spinCount">
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="200">200</option>
+        </select>
+      </label>
+      <button class="btn-resim" id="resimBtn" onclick="resimulate()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M10 6A4 4 0 1 1 6 2V0L9 3 6 6V4A2 2 0 1 0 8 6" stroke="white" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Resimulate
+      </button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-line" style="background:#8a8880;"></div>
+      Bankroll
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#8a8880;"></div>
+      Base win
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#1a5fa8;"></div>
+      Wild-enhanced win
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#c85a20;"></div>
+      Surge win
+    </div>
+    <div class="legend-item">
+      <div class="legend-band" style="background:#c85a20;"></div>
+      Surge window
+    </div>
+  </div>
+
+  <div class="chart-panel">
+    <div class="chart-wrap">
+      <canvas id="pressureChart"></canvas>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Final Bankroll</div>
+      <div class="stat-value" id="stat-bankroll">—</div>
+      <div class="stat-note" id="stat-bankroll-note">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Realized RTP</div>
+      <div class="stat-value" id="stat-rtp">—</div>
+      <div class="stat-note">Target: 89.91%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Hit Frequency</div>
+      <div class="stat-value" id="stat-hitfreq">—</div>
+      <div class="stat-note">Model: 15.75%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Longest Dry Spell</div>
+      <div class="stat-value" id="stat-dry">—</div>
+      <div class="stat-note" id="stat-dry-note">consecutive non-wins</div>
+    </div>
+  </div>
+
+  <div class="session-summary" id="sessionSummary">Running simulation…</div>
+
+  <div class="reading-guide">
+    <div class="guide-item">
+      <div class="guide-label">The descending line</div>
+      <div class="guide-text">Each spin without a win costs $1. The slope of the descent between dots is the dry spell made visible — not as absence, but as duration. A histogram cannot show this.</div>
+    </div>
+    <div class="guide-item">
+      <div class="guide-label">The dots</div>
+      <div class="guide-text">Win events sized by payout magnitude. A small dot is a Scrap or Shatter match. A large dot is a wild-amplified outcome. A large orange dot during a surge window is the session-defining moment.</div>
+    </div>
+    <div class="guide-item">
+      <div class="guide-label">The before</div>
+      <div class="guide-text">A 28× win after 3 spins feels different from a 28× win after 40 spins. The payout is identical. The emotional weight is not. This visualization makes the before visible alongside the win.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── FORGE Math Model ────────────────────────────────────────────────────────
+
+const NORMAL_STRIP = [
+  {sym:'Scrap',    stops:7},
+  {sym:'Shatter',  stops:7},
+  {sym:'Ingot',    stops:3},
+  {sym:'Plate',    stops:2},
+  {sym:'Molten',   stops:1},
+  {sym:'Wild',     stops:2},
+];
+const SURGE_STRIP = [
+  {sym:'Scrap',    stops:9},
+  {sym:'Shatter',  stops:7},
+  {sym:'Ingot',    stops:1},
+  {sym:'Plate',    stops:1},
+  {sym:'Molten',   stops:1},
+  {sym:'Wild',     stops:3},
+];
+
+const PAY = { Scrap:2, Shatter:2, Ingot:4, Plate:7, Molten:15 };
+const WM_NORMAL = [0, 2, 4, 8];
+const WM_SURGE  = [0, 3, 6, 12];
+
+function buildStrip(def) {
+  const arr = [];
+  def.forEach(e => { for (let i = 0; i < e.stops; i++) arr.push(e.sym); });
+  return arr;
+}
+const N_STRIP = buildStrip(NORMAL_STRIP);
+const S_STRIP = buildStrip(SURGE_STRIP);
+
+function randStop(strip) { return strip[Math.floor(Math.random() * strip.length)]; }
+
+function evaluate(s1, s2, s3, isSurge) {
+  const wm = isSurge ? WM_SURGE : WM_NORMAL;
+  const wilds = [s1,s2,s3].filter(s => s === 'Wild').length;
+  if (wilds === 3) return { payout: 15 * wm[3], wildCount: 3, type: isSurge ? 'surge' : 'wild' };
+  const nonW = [s1,s2,s3].filter(s => s !== 'Wild');
+  if (nonW.length > 0 && nonW.every(s => s === nonW[0])) {
+    const base = PAY[nonW[0]];
+    if (wilds === 0) return { payout: base, wildCount: 0, type: isSurge ? 'surge' : 'base' };
+    return { payout: base * wm[wilds], wildCount: wilds, type: isSurge ? 'surge' : 'wild' };
+  }
+  return { payout: 0, wildCount: 0, type: 'none' };
+}
+
+function simulate(nSpins) {
+  const bankroll  = [100];
+  const wins      = [];
+  const surgeWindows = [];
+  let credits   = 100;
+  let surgeLeft = 0;
+  let hits      = 0;
+  let dryRun    = 0;
+  let maxDry    = 0;
+  let totalOut  = 0;
+
+  for (let i = 0; i < nSpins; i++) {
+    let isSurge = surgeLeft > 0;
+    if (!isSurge && Math.random() < 0.01) {
+      surgeLeft = 3;
+      isSurge   = true;
+      surgeWindows.push({ start: i, end: i + 2 });
+    }
+    const strip = isSurge ? S_STRIP : N_STRIP;
+    const res   = evaluate(randStop(strip), randStop(strip), randStop(strip), isSurge);
+    credits -= 1;
+    if (res.payout > 0) {
+      credits  += res.payout;
+      totalOut += res.payout;
+      hits++;
+      wins.push({ spin: i + 1, payout: res.payout, type: res.type, dryBefore: dryRun });
+      maxDry = Math.max(maxDry, dryRun);
+      dryRun = 0;
+    } else {
+      dryRun++;
+    }
+    if (surgeLeft > 0) surgeLeft--;
+    bankroll.push(Math.max(0, credits));
+  }
+  maxDry = Math.max(maxDry, dryRun);
+  return { bankroll, wins, surgeWindows, hits, maxDry, totalOut, nSpins };
+}
+
+// ── Chart ───────────────────────────────────────────────────────────────────
+
+let chartInst = null;
+
+const TYPE_COLOR = {
+  base:  '#8a8880',
+  wild:  '#1a5fa8',
+  surge: '#c85a20',
+};
+
+function getPointSize(payout) {
+  return Math.min(4 + Math.log2(payout + 1) * 1.4, 14);
+}
+
+const surgeShadePlugin = {
+  id: 'surgeShade',
+  beforeDraw(chart, _args, opts) {
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea || !opts.windows) return;
+    opts.windows.forEach(sw => {
+      const x0 = scales.x.getPixelForValue(sw.start);
+      const x1 = scales.x.getPixelForValue(Math.min(sw.end + 1, opts.nSpins));
+      ctx.save();
+      ctx.fillStyle = 'rgba(200,90,32,0.10)';
+      ctx.fillRect(x0, chartArea.top, x1 - x0, chartArea.bottom - chartArea.top);
+      ctx.strokeStyle = 'rgba(200,90,32,0.30)';
+      ctx.lineWidth   = 1;
+      ctx.setLineDash([3, 4]);
+      [x0, x1].forEach(x => {
+        ctx.beginPath(); ctx.moveTo(x, chartArea.top); ctx.lineTo(x, chartArea.bottom); ctx.stroke();
+      });
+      ctx.restore();
+    });
+  },
+};
+
+function buildChart(res) {
+  const nSpins = res.nSpins;
+  const labels = Array.from({ length: nSpins + 1 }, (_, i) => i === 0 ? 'Start' : i);
+
+  const winMap = new Map(res.wins.map(w => [w.spin, w]));
+
+  const ptColors = res.bankroll.map((_, i) => {
+    const w = winMap.get(i);
+    return w ? TYPE_COLOR[w.type] : 'transparent';
+  });
+  const ptRadius = res.bankroll.map((_, i) => {
+    const w = winMap.get(i);
+    return w ? getPointSize(w.payout) : 0;
+  });
+  const ptHoverR = ptRadius.map(r => r > 0 ? r + 2 : 0);
+
+  const cfg = {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Bankroll',
+        data:  res.bankroll,
+        borderColor: 'rgba(200,196,188,0.55)',
+        borderWidth: 1.5,
+        fill:    false,
+        tension: 0.15,
+        pointBackgroundColor: ptColors,
+        pointBorderColor:     ptColors,
+        pointRadius:          ptRadius,
+        pointHoverRadius:     ptHoverR,
+      }],
+    },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      animation:           { duration: 320, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f0f0d',
+          titleColor:      '#aeaea6',
+          bodyColor:       '#faf9f6',
+          borderColor:     'rgba(255,255,255,0.08)',
+          borderWidth:     1,
+          padding:         10,
+          callbacks: {
+            title: ctx => `Spin ${ctx[0].label}`,
+            label: ctx => {
+              const spin = parseInt(ctx.label);
+              const w = winMap.get(spin);
+              if (w) {
+                const typeLabel = { base:'Base win', wild:'Wild-enhanced', surge:'Surge win' }[w.type];
+                return [
+                  `Bankroll: $${ctx.raw.toFixed(0)}`,
+                  `${typeLabel}: ${w.payout}× payout`,
+                  `Dry spell before: ${w.dryBefore} spins`,
+                ];
+              }
+              return `Bankroll: $${ctx.raw.toFixed(0)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxTicksLimit: 11,
+            font: { family: "'DM Mono', monospace", size: 10 },
+            color: 'rgba(200,196,188,0.4)',
+          },
+          grid:  { color: 'rgba(255,255,255,0.04)' },
+          border: { color: 'rgba(255,255,255,0.08)' },
+          title: {
+            display: true,
+            text: 'Spin',
+            font: { family: "'DM Mono', monospace", size: 10 },
+            color: 'rgba(200,196,188,0.35)',
+          },
+        },
+        y: {
+          ticks: {
+            font: { family: "'DM Mono', monospace", size: 10 },
+            color: 'rgba(200,196,188,0.4)',
+            callback: v => `$${v}`,
+          },
+          grid:  { color: 'rgba(255,255,255,0.04)' },
+          border: { color: 'rgba(255,255,255,0.08)' },
+          title: {
+            display: true,
+            text: 'Credits',
+            font: { family: "'DM Mono', monospace", size: 10 },
+            color: 'rgba(200,196,188,0.35)',
+          },
+        },
+      },
+    },
+    plugins: [{
+      ...surgeShadePlugin,
+      options: { windows: res.surgeWindows, nSpins },
+    }],
+  };
+
+  // Register the surge shade plugin with options passed via the plugin array
+  const plugin = {
+    id: 'surgeShade',
+    beforeDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea) return;
+      res.surgeWindows.forEach(sw => {
+        const x0 = scales.x.getPixelForValue(sw.start);
+        const x1 = scales.x.getPixelForValue(Math.min(sw.end + 1, nSpins));
+        ctx.save();
+        ctx.fillStyle = 'rgba(200,90,32,0.10)';
+        ctx.fillRect(x0, chartArea.top, x1 - x0, chartArea.bottom - chartArea.top);
+        ctx.strokeStyle = 'rgba(200,90,32,0.30)';
+        ctx.lineWidth   = 1;
+        ctx.setLineDash([3, 4]);
+        [x0, x1].forEach(x => {
+          ctx.beginPath(); ctx.moveTo(x, chartArea.top); ctx.lineTo(x, chartArea.bottom); ctx.stroke();
+        });
+        ctx.restore();
+      });
+    },
+  };
+
+  if (chartInst) chartInst.destroy();
+  chartInst = new Chart(document.getElementById('pressureChart'), {
+    type: 'line',
+    data: cfg.data,
+    options: cfg.options,
+    plugins: [plugin],
+  });
+}
+
+// ── Stats & Summary ─────────────────────────────────────────────────────────
+
+function updateStats(res) {
+  const finalBankroll = res.bankroll[res.bankroll.length - 1];
+  const rtp           = (res.totalOut / res.nSpins * 100).toFixed(1);
+  const hf            = (res.hits / res.nSpins * 100).toFixed(1);
+  const rtpNum        = parseFloat(rtp);
+
+  const bEl  = document.getElementById('stat-bankroll');
+  const bnEl = document.getElementById('stat-bankroll-note');
+  bEl.textContent  = `$${finalBankroll.toFixed(0)}`;
+  bEl.className    = 'stat-value ' + (finalBankroll >= 100 ? 'above' : 'below');
+  bnEl.textContent = finalBankroll >= 100
+    ? `+$${(finalBankroll - 100).toFixed(0)} vs start`
+    : `-$${(100 - finalBankroll).toFixed(0)} vs start`;
+
+  const rtpEl = document.getElementById('stat-rtp');
+  rtpEl.textContent = `${rtp}%`;
+  rtpEl.className   = 'stat-value ' + (rtpNum >= 89 ? 'above' : 'below');
+
+  document.getElementById('stat-hitfreq').textContent = `${hf}%`;
+  document.getElementById('stat-dry').textContent     = `${res.maxDry}`;
+
+  const surgeCount = res.surgeWindows.length;
+  const surgeWins  = res.wins.filter(w => w.type === 'surge').length;
+  const baseWins   = res.wins.filter(w => w.type === 'base').length;
+  const wildWins   = res.wins.filter(w => w.type === 'wild').length;
+
+  let summary = `${res.hits} win${res.hits !== 1 ? 's' : ''} across ${res.nSpins} spins — `;
+  summary += `${baseWins} base, ${wildWins} wild-enhanced, ${surgeWins} surge. `;
+  if (surgeCount > 0) {
+    summary += `${surgeCount} Surge event${surgeCount > 1 ? 's' : ''} triggered. `;
+  } else {
+    summary += `No Surge triggered this session (1% per spin). `;
+  }
+  summary += `Longest dry spell: ${res.maxDry} consecutive non-winning spins. `;
+  summary += `Model RTP: 89.91% · Model hit frequency: 15.75%`;
+
+  document.getElementById('sessionSummary').textContent = summary;
+}
+
+// ── Main ────────────────────────────────────────────────────────────────────
+
+function resimulate() {
+  const nSpins = parseInt(document.getElementById('spinCount').value);
+  const res = simulate(nSpins);
+  buildChart(res);
+  updateStats(res);
+}
+
+resimulate();
+</script>
+</body>
+</html>
